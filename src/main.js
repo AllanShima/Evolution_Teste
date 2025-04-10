@@ -1,108 +1,213 @@
 import { MY_API_KEY } from './config.js';
 
+const modal = document.getElementById('modal');
+const overlay = document.getElementById('overlay');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const cancelButton = document.getElementById('cancel-button');
+const submitButton = document.getElementById('submit-button');
+const closeModalButton = document.getElementById('close-modal');
+const feedback = document.getElementById('feedback');
+const resultsContainer = document.getElementById('results-container');
 
-document.getElementById("criar-instancia").addEventListener("click", criarInstancia);
-document.getElementById("conectar-instancia").addEventListener("click", conectarInstancia);
-document.getElementById("criar-grupo").addEventListener("click", criarGrupo);
-document.getElementById("deletar-instancia").addEventListener("click", deletarInstancia);
-document.getElementById("printar-instancia").addEventListener("click", fetchInstancias);
-document.getElementById("print-link-convite").addEventListener("click", codigoConvite);
-document.getElementById("print-info-grupo").addEventListener("click", fetchGrupo);
+let currentAction = null;
+let createdInstances = [];
+let createdGroups = [];
 
-// Função para Criar uma Instância no Manager
+// Função para abrir o modal
+function openModal(title, fields, action) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = fields
+        .map(field => `
+            <label>${field.label}</label>
+            <input type="${field.type}" id="${field.id}" />
+        `)
+        .join('');
+    currentAction = action;
+    modal.classList.add('visible');
+    overlay.classList.add('visible');
+}
 
-async function criarInstancia() {
-  const options = {
+// Fechar o modal
+function closeModal() {
+    modal.classList.remove('visible');
+    overlay.classList.remove('visible');
+}
+
+// Mostrar feedback
+function showFeedback(message, type) {
+    feedback.textContent = message;
+    feedback.className = type === 'success' ? 'success' : 'error';
+    feedback.style.display = 'block';
+    setTimeout(() => {
+        feedback.style.display = 'none';
+    }, 3000);
+}
+
+// Capturar dados do modal e executar ação
+function handleSubmit() {
+    const inputs = modalBody.querySelectorAll('input');
+    const data = {};
+    inputs.forEach(input => {
+        data[input.id] = input.value;
+    });
+    if (currentAction) currentAction(data);
+    closeModal();
+}
+
+// --------------------------------------------------------------------------------------------------
+
+// Funções para cada botão
+
+// Criar Instância
+function criarInstancia(data) {
+    const { nomeInstancia, telefone } = data;
+    createdInstances.push({ nomeInstancia, telefone });
+    
+
+    const options = {
       method: 'POST',
       headers: {
         apikey: MY_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ // Use JSON.stringify to serialize the object into a JSON string
-          instanceName: "exemplo",
+          instanceName: nomeInstancia,
           qrcode: true,
-          number: "5514981826224",
+          number: telefone,
           integration: "WHATSAPP-BAILEYS"
       })
     };
     
     fetch('http://localhost:8080/instance/create', options)
-      .then(response => { return response.json()})
-      .then(response => console.log(response))
-      .catch(err => console.error(err));
-}
-
-// Função para Conectar o Whatsapp na Instância criada
-
-function conectarInstancia(){
-    const options1 = {method: 'GET', headers: {apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be'}};
-
-    fetch('http://localhost:8080/instance/connect/exemplo', options1)
       .then(response => response.json())
-      .then(response => console.log(response))
+      .then(response => {
+        console.log(response)
+        showFeedback(`Instância "${nomeInstancia}" criada com sucesso!`, 'success')
+      })
       .catch(err => console.error(err));
 }
 
-// Apagar a conexão do whats
+// Conectar Instância
+function conectarInstancia(data) {
+  const { nomeInstancia } = data;
+  
+  // Verifica se a instância existe
+  const instancia = createdInstances.find(i => i.nomeInstancia === nomeInstancia);
+  if (!instancia) {
+      showFeedback(`Instância "${nomeInstancia}" não encontrada!`, 'error');
+      return; // Encerra a função se a instância não existir
+  }
 
-function deletarInstancia(){
-  const options = {method: 'DELETE', headers: {apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be'}};
+  showFeedback(`Conectando à instância "${nomeInstancia}"...`, 'success');
 
-  fetch('http://localhost:8080/instance/delete/exemplo', options)
-    .then(response => response.json())
-    .then(response => console.log(response))
-    .catch(err => console.error(err));
+  const options = {
+      method: 'GET',
+      headers: { apikey: MY_API_KEY }
+  };
+
+  // Usa a variável nomeInstancia na URL
+  fetch(`http://localhost:8080/instance/connect/${nomeInstancia}`, options)
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Erro na conexão com a API');
+          }
+          return response.json();
+      })
+      .then(data => {
+          // Verifica se existe pairingCode na resposta
+          if (data.qrcode && data.qrcode.pairingCode) {
+              const codigoPareamento = data.qrcode.pairingCode;
+              alert(`Código de Pareamento: ${codigoPareamento}`);
+          } else {
+              throw new Error('Código de pareamento não encontrado na resposta');
+          }
+      })
+      .catch(err => {
+          console.error('Erro:', err);
+          showFeedback(`Falha ao conectar à instância: ${err.message}`, 'error');
+      });
 }
 
-// pra pegar informações das instancias
-
-function fetchInstancias(){
-    const options3 = {method: 'GET', headers: {apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be'}};
-
-    fetch('http://localhost:8080/instance/fetchInstances', options3)
-        .then(response => response.json())
-        .then(response => console.log(response))
-        .catch(err => console.error(err));
+// Criar Grupo
+function criarGrupo(data) {
+    const { nomeInstancia, nomeGrupo, descricao, participantes } = data;
+    const instancia = createdInstances.find(i => i.nomeInstancia === nomeInstancia);
+    if (instancia) {
+        createdGroups.push({ nomeGrupo, descricao, participantes });
+        showFeedback(`Grupo "${nomeGrupo}" criado na instância "${nomeInstancia}"!`, 'success');
+    } else {
+        showFeedback(`Instância "${nomeInstancia}" não encontrada!`, 'error');
+    }
 }
 
-// Função para criar grupo do Whatsapp a partir da Instância
+// Desconectar Instância
+function desconectarInstancia
 
-function criarGrupo(){
-    const options5 = {
-        method: 'POST',
-        headers: {
-          apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            subject: "teste da API", 
-            description: "gfesgfsdgdsf",
-            participants: ["5514996090039"]
-        })
-      };
-      
-      fetch('http://localhost:8080/group/create/exemplo', options5)
-        .then(response => response.json())
-        .then(response => console.log(response))
-        .catch(err => console.error(err));
+// Deletar Instância
+function deletarInstancia(data) {
+    const { nomeInstancia } = data;
+    createdInstances = createdInstances.filter(i => i.nomeInstancia !== nomeInstancia);
+    showFeedback(`Instância "${nomeInstancia}" deletada com sucesso!`, 'success');
 }
 
-// Função pra mostrar o código de convite do grupo
-
-function codigoConvite(){
-  const options = {method: 'GET', headers: {apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be'}};
-
-  fetch('http://localhost:8080/group/inviteCode/exemplo?groupJid=120363401307572585', options)
-    .then(response => response.json())
-    .then(response => console.log(response))
-    .catch(err => console.error(err));
+// Printar Instâncias
+function printarInstancias() {
+    resultsContainer.innerHTML = createdInstances.map(inst => `
+        <div>Instância: ${inst.nomeInstancia}, Telefone: ${inst.telefone}</div>
+    `).join('');
+    showFeedback('Instâncias listadas abaixo.', 'success');
 }
 
-function fetchGrupo(){
-  const options = {method: 'GET', headers: {apikey: '4c3901cf-458c-41e1-9439-2e6055c7a5be'}};
-
-  fetch('http://localhost:8080/group/findGroupInfos/exemplo?groupJid=120363401307572585', options)
-    .then(response => response.json())
-    .then(response => console.log(response))
-    .catch(err => console.error(err));
+// Printar Link de Convite
+function printarLinkConvite() {
+    const linkAleatorio = `https://wa.me/${Math.random().toString(36).substr(2, 8)}`;
+    showFeedback(`Link de convite gerado: ${linkAleatorio}`, 'success');
 }
+
+// Printar Info do Grupo
+function printarInfoGrupo() {
+    resultsContainer.innerHTML = createdGroups.map(grupo => `
+        <div>Grupo: ${grupo.nomeGrupo}, Descrição: ${grupo.descricao}, Participantes: ${grupo.participantes}</div>
+    `).join('');
+    showFeedback('Informações dos grupos listadas abaixo.', 'success');
+}
+
+// Eventos de Botões
+document.getElementById("criar-instancia").addEventListener("click", () => {
+    openModal('Criar Instância', [
+        { label: 'Nome da Instância', id: 'nomeInstancia', type: 'text' },
+        { label: 'Telefone', id: 'telefone', type: 'text' }
+    ], criarInstancia);
+});
+
+document.getElementById("conectar-instancia").addEventListener("click", () => {
+    openModal('Conectar Instância', [
+        { label: 'Nome da Instância', id: 'nomeInstancia', type: 'text' },
+    ], conectarInstancia);
+});
+
+document.getElementById("criar-grupo").addEventListener("click", () => {
+    openModal('Criar Grupo', [
+        { label: 'Nome da Instância', id: 'nomeInstancia', type: 'text' },
+        { label: 'Nome do Grupo', id: 'nomeGrupo', type: 'text' },
+        { label: 'Descrição', id: 'descricao', type: 'text' },
+        { label: 'Telefone dos Participantes', id: 'participantes', type: 'text' }
+    ], criarGrupo);
+});
+
+document.getElementById("deletar-instancia").addEventListener("click", () => {
+    openModal('Deletar Instância', [
+        { label: 'Nome da Instância', id: 'nomeInstancia', type: 'text' }
+    ], deletarInstancia);
+});
+
+document.getElementById("printar-instancia").addEventListener("click", printarInstancias);
+document.getElementById("print-link-convite").addEventListener("click", printarLinkConvite);
+document.getElementById("print-info-grupo").addEventListener("click", printarInfoGrupo);
+
+// Fechar o Modal
+cancelButton.addEventListener("click", closeModal);
+closeModalButton.addEventListener("click", closeModal);
+overlay.addEventListener("click", closeModal);
+submitButton.addEventListener("click", handleSubmit);

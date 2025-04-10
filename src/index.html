@@ -4,36 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./style.css">
-    <title>Site teste</title>
+    <title>Site Melhorado</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div id="option-container">
-
-        <h2>Grupo #1</h2>
+        <i class="fab fa-whatsapp fa-3x" style="color: #25d366;"></i>
+        <h2>Gerenciamento de WhatsApp</h2>
         <div id="button-container">
-        
-            <!-- POST = Create Instance Basic -->
-            <button class="botao-instancia" id="criar-instancia">Criar Instância</button>
 
-            <!-- GET = Instance Connect -->
-            <button class="botao-instancia" id="conectar-instancia">Conectar ao Whatsapp</button>
+            <!-- Modal -->
+            <div id="modal" class="modal">
+                <div class="modal-header">
+                    <span id="modal-title"></span>
+                    <button id="close-modal">X</button>
+                </div>
+                <div class="modal-body" id="modal-body"></div>
+                <div class="modal-footer">
+                    <button id="cancel-button">Cancelar</button>
+                    <button id="submit-button">Confirmar</button>
+                </div>
+            </div>
+            <div id="overlay" class="overlay"></div>
 
-            <!-- POST = Create Group -->
-            <button class="botao-instancia" id="criar-grupo">Criar Grupo</button>
+            <!-- Feedback -->
+            <div id="feedback" class="hidden"></div>
 
-            <!-- PUT = Logout Instance -->
-            <button class="botao-instancia" id="deletar-instancia">Deletar Instancia</button>
-
-            <!-- PUT = Logout Instance -->
-            <button class="botao-instancia" id="printar-instancia">Printar Instâncias</button>
-
-            <!-- PUT = Logout Instance -->
-            <button class="botao-instancia" id="print-link-convite">Printar Link de Convite</button>
-            
-            <!-- PUT = Logout Instance -->
-            <button class="botao-instancia" id="print-info-grupo">Printar Info Grupo</button>
-
+            <!-- Botões -->
+            <button class="botao-instancia" id="criar-instancia">
+                <i class="fas fa-plus-circle"></i> Criar Instância
+            </button>
+            <button class="botao-instancia" id="conectar-instancia">
+                <i class="fas fa-link"></i> Conectar ao WhatsApp
+            </button>
+            <button class="botao-instancia" id="criar-grupo">
+                <i class="fas fa-users"></i> Criar Grupo
+            </button>
+            <button class="botao-instancia" id="deletar-instancia">
+                <i class="fas fa-trash-alt"></i> Deletar Instância
+            </button>
+            <button class="botao-instancia" id="printar-instancia">
+                <i class="fas fa-print"></i> Printar Instâncias
+            </button>
+            <button class="botao-instancia" id="print-link-convite">
+                <i class="fas fa-link"></i> Printar Link de Convite
+            </button>
+            <button class="botao-instancia" id="print-info-grupo">
+                <i class="fas fa-info-circle"></i> Printar Info Grupo
+            </button>
         </div>
+        <div id="results-container"></div>
+        <div id="loader" class="hidden">Carregando...</div>
     </div>
     <script src="main.js" type="module"></script>
 </body>
